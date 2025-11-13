@@ -48,6 +48,12 @@ pnpm dev
 
 #### These are instructions for running in dev mode!
 
+## ❗Important
+
+If you run BlockGate on your device and create a server, it will be accessible by your machine IP and PORT inside your local network. If you want to make your server accessible outside your local network (allowing friends and others to join), you'll have to put your machine and the server / VPS in the same network. You can achieve this by using some tools like [TailScale](https://tailscale.com) or other VPN service.
+
+**BlockGate** runs on localhost:3000 **(Subject to change)**
+
 ## Control Panel
 
 <img width="1919" height="915" alt="image" src="https://github.com/user-attachments/assets/a78ac563-dd36-43e8-b4da-351e2c54a6f0" />
