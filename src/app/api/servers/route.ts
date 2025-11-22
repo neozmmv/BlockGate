@@ -119,6 +119,8 @@ if(!session) {
     await docker.createVolume({ Name: volumeName }).catch(() => { /* se existir, reutiliza */ });
 
     // Port mapping
+    // REMEMBER TO HANDLE THIS PORT SETUP CORRECTLY
+    // might send via request, check if port is used on host, etc... idk
     const ExposedPorts: Record<string, {}> = { "25565/tcp": {} };
     const PortBindings: Record<string, Array<{ HostPort: string }>> = {
       "25565/tcp": [{ HostPort: String(hostPort) }],
