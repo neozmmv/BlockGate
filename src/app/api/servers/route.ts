@@ -17,6 +17,7 @@ enum versionType {
   NEOFORGE = "NEOFORGE",
   SPIGOT = "SPIGOT",
   PAPER = "PAPER",
+  CURSEFORGE = "AUTO_CURSEFORGE",
 }
 
 export interface Payload {

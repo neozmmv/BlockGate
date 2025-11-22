@@ -3,6 +3,9 @@ generator client {
   output   = "../src/generated/prisma"
 }
 
+// PRISMA 7 MADE THINGS WORSE
+// WE ARE USING 6.something
+// maybe we can upgrade later, but for now, this works
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL") // trying to fix on docker compose
@@ -77,7 +80,7 @@ enum ServerType {
   NEOFORGE
   SPIGOT
   PAPER
-  CURSEFORGE
+  AUTO_CURSEFORGE
 }
 
 enum ServerStatus {
