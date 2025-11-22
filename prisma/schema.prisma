@@ -19,6 +19,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   servers       Server[]
+  cf_api        String?
 
   @@unique([email])
   @@map("user")
@@ -76,6 +77,7 @@ enum ServerType {
   NEOFORGE
   SPIGOT
   PAPER
+  CURSEFORGE
 }
 
 enum ServerStatus {

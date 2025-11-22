@@ -12,6 +12,11 @@ const options = [
     href: "/panel/server",
     icon: <Cog className={default_mr} />,
   },
+  {
+    label: "General",
+    href: "/panel/general",
+    icon: <Cog className={default_mr} />,
+  },
 ];
 
 export default options;
