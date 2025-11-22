@@ -96,12 +96,17 @@ export default function AddServerButton() {
                     onChange={(e) => setType(e.target.value)}
                     className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
                   >
+                    {/* NEED TO ADD OPTION TO SEARCH CURSEFORGE MODPACKS AND CREATE THE CONTAINER
+                      DOCS: https://docs.curseforge.com/rest-api/
+                      SEND x-api-key IN HEADERS (CF_API)
+                    */}
                     <option value="VANILLA">Vanilla</option>
                     <option value="FORGE">Forge</option>
                     <option value="FABRIC">Fabric</option>
                     <option value="NEOFORGE">NeoForge</option>
                     <option value="SPIGOT">Spigot</option>
                     <option value="PAPER">Paper</option>
+                    <option value="AUTO_CURSEFORGE">CurseForge Modpack</option>
                   </select>
                 </label>
                 <label className="block text-sm text-zinc-300">
