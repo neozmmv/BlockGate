@@ -23,6 +23,8 @@ enum versionType {
 export interface Payload {
   metadata: { serverName: string; description?: string };
   versioning: { type: versionType; version: string; build?: string | null };
+  CF_API_KEY?: string; // for AUTO_CURSEFORGE
+  CF_PAGE_URL?: string; // for AUTO_CURSEFORGE
   runtime: {
     eula: boolean;
     memory: { init: string; max: string };
@@ -59,6 +61,13 @@ if(!session) {
       { status: 401 }
     );
 }
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { cf_api: true }, // only select cf_api field since we only need that
+  });
+  
+  const cfApiKey = user?.cf_api ?? ""; // get current user's curseforge api
+
   try {
     const body = (await req.json()) as Payload;
 
@@ -76,6 +85,26 @@ if(!session) {
     if (body.runtime.java?.useAikarFlags) envObj.USE_AIKAR_FLAGS = "TRUE";
     if (body.runtime.java?.jvmOpts) envObj.JVM_OPTS = body.runtime.java.jvmOpts;
     if (body.runtime.java?.jvmXXOpts) envObj.JVM_XX_OPTS = body.runtime.java.jvmXXOpts;
+
+    // for AUTO_CURSEFORGE
+
+    if(body.versioning.type === versionType.CURSEFORGE) {
+      // !! using stored api!!
+      if(!cfApiKey) {
+        return NextResponse.json({
+          ok: false,
+          error: "No CurseForge API key found for user. Please set it in your general settings.",
+        }, { status: 400 });
+      }
+      if(!body.CF_PAGE_URL) {
+        return NextResponse.json({
+          ok: false,
+          error: "Missing CF_PAGE_URL for server. Get the modpack page URL from CurseForge.",
+        }, { status: 400 });
+      }
+      envObj.CF_API_KEY = cfApiKey;
+      envObj.CF_PAGE_URL = body.CF_PAGE_URL;
+    }
 
     const Env = Object.entries(envObj).map(([k, v]) => `${k}=${v}`);
 
