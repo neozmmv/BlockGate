@@ -22,7 +22,7 @@ enum versionType {
 
 export interface Payload {
   metadata: { serverName: string; description?: string };
-  versioning: { type: versionType; version: string; build?: string | null };
+  versioning: { type: versionType; version?: string; build?: string | null };
   CF_API_KEY?: string; // for AUTO_CURSEFORGE
   CF_PAGE_URL?: string; // for AUTO_CURSEFORGE
   runtime: {
@@ -75,7 +75,7 @@ if(!session) {
     const envObj: Record<string, string> = {
       EULA: body.runtime.eula ? "TRUE" : "FALSE",
       TYPE: body.versioning.type,
-      VERSION: body.versioning.version,
+      VERSION: body.versioning.version ?? "", // version not required for curseforge, not sure
       INIT_MEMORY: body.runtime.memory.init,
       MAX_MEMORY: body.runtime.memory.max,
       TZ: body.runtime.timezone ?? "UTC",
@@ -125,6 +125,7 @@ if(!session) {
     };
 
     // Container creation
+    // i want to send PORT via request if possible later
     const container = await docker.createContainer({
       name: containerName,
       Image: IMAGE,
@@ -157,7 +158,7 @@ if(!session) {
         containerId: info.Id,
         eula: body.runtime.eula,
         serverType: body.versioning.type,
-        version: body.versioning.version,
+        version: body.versioning.version ?? "", // not required for curseforge, not sure if this is ok
         minMemoryMB: body.runtime.memory.init,
         maxMemoryMB: body.runtime.memory.max,
         ownerId: session.user.id,

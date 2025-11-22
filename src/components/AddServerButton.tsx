@@ -109,22 +109,36 @@ export default function AddServerButton() {
                     <option value="AUTO_CURSEFORGE">CurseForge Modpack</option>
                   </select>
                 </label>
-                <label className="block text-sm text-zinc-300">
-                  Version
-                  <select
-                    value={version}
-                    onChange={(e) => setVersion(e.target.value)}
-                    className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
-                  >
-                    <option value="LATEST">Latest</option>
-                    {versions.map((ver) => (
-                      <option key={ver} value={ver}>
-                        {ver}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {type !== "AUTO_CURSEFORGE" && (
+                  <label className="block text-sm text-zinc-300">
+                    Version
+                    <select
+                      value={version}
+                      onChange={(e) => setVersion(e.target.value)}
+                      className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
+                    >
+                      <option value="LATEST">Latest</option>
+                      {versions.map((ver) => (
+                        <option key={ver} value={ver}>
+                          {ver}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
               </div>
+              {type === "AUTO_CURSEFORGE" && (
+                <div>
+                  <label className="block text-sm text-zinc-300">
+                    Modpack URL
+                  </label>
+                  <input
+                    value={serverName}
+                    onChange={(e) => setServerName(e.target.value)}
+                    className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
+                  />
+                </div>
+              )}
               <div className="flex justify-end mt-4">
                 <button
                   onClick={handleServerCreate}
