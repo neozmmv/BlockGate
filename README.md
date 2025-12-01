@@ -74,3 +74,29 @@ It aims to combine the simplicity of plug-and-play panels like Aternos with the 
 - **Future-Proof Foundation** — ready for scaling into a multi-node hosting environment later.
 - **Minecraft-Focused** — built exclusively for Minecraft servers, with an emphasis on simplicity, performance, and automation.
 - **Docker Based** — all Minecraft servers are isolated Docker containers based on the `itzg/minecraft-server` image.
+
+<hr/>
+
+# ⭐ Star History
+<div align='center'>
+
+  <picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="
+      https://api.star-history.com/svg?repos=neozmmv/blockgate&type=Date&theme=dark&legend=bottom-right
+    "
+  />
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset="
+      https://api.star-history.com/svg?repos=neozmmv/blockgate&type=Date&legend=bottom-right
+    "
+  />
+  <img
+    alt="Star History Chart"
+    src="https://api.star-history.com/svg?repos=neozmmv/blockgate&type=Date&legend=bottom-right"
+  />
+</picture>
+  
+</div>
