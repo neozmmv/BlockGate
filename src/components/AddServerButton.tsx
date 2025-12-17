@@ -136,7 +136,7 @@ export default function AddServerButton({ session }: { session?: any }) {
               </div>
               {type === "AUTO_CURSEFORGE" && (
                 <div>
-                  {cfApi ? null : (
+                  {!cfApi && (
                     <p className="text-red-500 text-sm mb-2">
                       You need to set your CurseForge API key in General
                     </p>
@@ -155,6 +155,7 @@ export default function AddServerButton({ session }: { session?: any }) {
                 <button
                   onClick={handleServerCreate}
                   className="cursor-pointer justify-end bg-blue-500 text-white px-4 py-2 rounded-md"
+                  disabled={!cfApi && type === "AUTO_CURSEFORGE"}
                 >
                   Create Server
                 </button>
