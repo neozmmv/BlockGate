@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
-export default function AddServerButton() {
+export default function AddServerButton({ session }: { session?: any }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [versions, setVersions] = useState([]);
   const [serverName, setServerName] = useState("");
@@ -11,6 +11,7 @@ export default function AddServerButton() {
   const [eula, setEula] = useState(true);
   const [initMemory, setInitMemory] = useState("2G");
   const [maxMemory, setMaxMemory] = useState("4G");
+  const [cfApi, setCfApi] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchVersions = async () => {
@@ -18,6 +19,12 @@ export default function AddServerButton() {
         const response = await axios.get(
           "https://mc-versions-api.net/api/java"
         );
+        const cfApiResponse = await axios.get("/api/cfapi");
+        if (cfApiResponse.data.ok) {
+          setCfApi(cfApiResponse.data.apiKey);
+        } else {
+          setCfApi(null);
+        }
         setVersions(response.data.result);
       } catch (error) {
         console.error("Error fetching versions:", error);
@@ -129,6 +136,11 @@ export default function AddServerButton() {
               </div>
               {type === "AUTO_CURSEFORGE" && (
                 <div>
+                  {cfApi ? null : (
+                    <p className="text-red-500 text-sm mb-2">
+                      You need to set your CurseForge API key in General
+                    </p>
+                  )}
                   <label className="block text-sm text-zinc-300">
                     Modpack URL
                   </label>

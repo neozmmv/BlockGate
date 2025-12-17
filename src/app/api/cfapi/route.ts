@@ -29,18 +29,19 @@ if (!session) {
         return NextResponse.json({ ok: false, error: "Missing apiKey!" }, { status: 400 });
     }
     try {
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: { cf_api: body.apiKey },
-    });
-    return NextResponse.json(
-      { ok: true, message: "API key updated successfully." },
-      { status: 200 }
-    );
-    } catch (err: any) {
-    return NextResponse.json(
-      { ok: false, error: err?.message ?? "Error updating API key" },
-      { status: 400 }
-    );
+        body.apiKey = body.apiKey.trim();
+        await prisma.user.update({
+            where: { id: session.user.id },
+            data: { cf_api: body.apiKey },
+        });
+        return NextResponse.json(
+            { ok: true, message: "API key updated successfully." },
+            { status: 200 }
+        );
+        } catch (err: any) {
+            return NextResponse.json(
+            { ok: false, error: err?.message ?? "Error updating API key" },
+            { status: 400 }
+        );
     }
 }

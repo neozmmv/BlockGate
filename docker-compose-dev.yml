@@ -1,0 +1,27 @@
+services:
+  database:
+    image: postgres:16-alpine
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: cubegate
+      POSTGRES_PASSWORD: cubegate
+      POSTGRES_DB: cubegate
+      TZ: ${TZ:-UTC}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [postgres-network]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cubegate -d cubegate -h 127.0.0.1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+networks:
+  postgres-network:
+    driver: bridge
+
+volumes:
+  pgdata:
