@@ -9,7 +9,14 @@
  * - Bytes 1-3: padding (always 0)
  * - Bytes 4-7: payload size (uint32 big-endian)
  * 
- * This function removes these control characters (0x00-0x08) from the output.
+ * This function removes control characters (0x00-0x08) which covers:
+ * - 0x00: NULL character (used in stream type and padding)
+ * - 0x01-0x02: stdout/stderr markers
+ * - 0x03-0x08: Additional control characters from stream framing
+ * 
+ * Note: The payload size bytes (4-7) contain binary data that may have values
+ * beyond 0x08, but when converted to string they appear as control characters
+ * that this regex also handles.
  * 
  * @param output - Raw output from Docker exec stream
  * @returns Cleaned output string
