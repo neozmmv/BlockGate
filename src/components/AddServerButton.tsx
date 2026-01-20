@@ -30,7 +30,28 @@ export default function AddServerButton() {
   const handleOpenModal = () => setIsModalOpen((v) => !v);
 
   const handleServerCreate = async () => {
-    const payload: any = {
+    interface ServerCreatePayload {
+      metadata: {
+        serverName: string;
+      };
+      versioning: {
+        type: string;
+        version: string;
+      };
+      runtime: {
+        eula: boolean;
+        memory: {
+          init: string;
+          max: string;
+        };
+      };
+      curseforge?: {
+        cfPageUrl: string;
+        cfApiKey: string;
+      };
+    }
+
+    const payload: ServerCreatePayload = {
       metadata: {
         serverName,
       },

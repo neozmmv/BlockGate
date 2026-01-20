@@ -3,6 +3,7 @@ import { getDockerClient } from "@/lib/docker";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
+import { readDockerStream } from "@/lib/utils/docker-stream";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,19 +53,7 @@ export async function GET(req: NextRequest) {
     });
 
     const stream = await exec.start({ Detach: false });
-    
-    let output = "";
-    stream.on("data", (chunk: Buffer) => {
-      output += chunk.toString();
-    });
-
-    await new Promise((resolve, reject) => {
-      stream.on("end", resolve);
-      stream.on("error", reject);
-    });
-
-    // Remove Docker stream header bytes
-    const cleanOutput = output.replace(/[\x00-\x08]/g, "").trim();
+    const cleanOutput = await readDockerStream(stream);
 
     let whitelist = [];
     try {

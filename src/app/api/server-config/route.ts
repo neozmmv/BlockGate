@@ -3,6 +3,7 @@ import { getDockerClient } from "@/lib/docker";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
+import { readDockerStream } from "@/lib/utils/docker-stream";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,19 +53,7 @@ export async function GET(req: NextRequest) {
     });
 
     const stream = await exec.start({ Detach: false });
-    
-    let output = "";
-    stream.on("data", (chunk: Buffer) => {
-      output += chunk.toString();
-    });
-
-    await new Promise((resolve, reject) => {
-      stream.on("end", resolve);
-      stream.on("error", reject);
-    });
-
-    // Remove Docker stream header bytes (first 8 bytes of each chunk)
-    const cleanOutput = output.replace(/[\x00-\x08]/g, "");
+    const cleanOutput = await readDockerStream(stream);
 
     return NextResponse.json({
       ok: true,
@@ -115,14 +104,18 @@ export async function PUT(req: NextRequest) {
 
     const container = docker.getContainer(server.containerName);
 
-    // Write the content to server.properties
+    // Write the content to server.properties using echo to avoid shell interpolation issues
+    // Split into array to pass as separate arguments, preventing command injection
     const exec = await container.exec({
-      Cmd: ["sh", "-c", `cat > /data/server.properties << 'EOF'\n${content}\nEOF`],
+      Cmd: ["tee", "/data/server.properties"],
+      AttachStdin: true,
       AttachStdout: true,
       AttachStderr: true,
     });
 
-    await exec.start({ Detach: false });
+    const stream = await exec.start({ hijack: true, stdin: true });
+    stream.write(content);
+    stream.end();
 
     return NextResponse.json({
       ok: true,
