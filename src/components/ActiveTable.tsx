@@ -86,6 +86,12 @@ export default function OnlineTable() {
             <td className="p-4">
               <div className="flex justify-center gap-4">
                 <button
+                  onClick={() => window.location.href = `/panel/server-config?id=${server.id}`}
+                  className="cursor-pointer px-3 py-1 bg-blue-500 rounded-md hover:bg-blue-500/80 transition-all"
+                >
+                  Configure
+                </button>
+                <button
                   onClick={() => handleStopServer(server.id)}
                   className="cursor-pointer px-3 py-1 bg-yellow-500 rounded-md hover:bg-yellow-500/80 transition-all"
                 >

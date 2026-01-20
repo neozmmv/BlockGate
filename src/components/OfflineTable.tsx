@@ -84,6 +84,12 @@ export default function InactiveTable() {
             <td className="p-4">
               <div className="flex justify-center gap-4">
                 <button
+                  onClick={() => window.location.href = `/panel/server-config?id=${server.id}`}
+                  className="cursor-pointer px-3 py-1 bg-blue-500 rounded-md hover:bg-blue-500/80 transition-all"
+                >
+                  Configure
+                </button>
+                <button
                   onClick={() => handleStartServer(server.id)}
                   className="cursor-pointer px-3 py-1 bg-green-700 rounded-md hover:bg-green-700/80 transition-all"
                 >
