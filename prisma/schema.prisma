@@ -76,6 +76,7 @@ enum ServerType {
   NEOFORGE
   SPIGOT
   PAPER
+  AUTO_CURSEFORGE
 }
 
 enum ServerStatus {
@@ -98,6 +99,10 @@ model Server {
 
   serverType ServerType
   status     ServerStatus @default(CREATING)
+
+  // CurseForge modpack fields
+  cfPageUrl   String?
+  cfApiKey    String?
 
   ipAddress String @db.Inet
   port      Int

@@ -17,6 +17,7 @@ enum versionType {
   NEOFORGE = "NEOFORGE",
   SPIGOT = "SPIGOT",
   PAPER = "PAPER",
+  AUTO_CURSEFORGE = "AUTO_CURSEFORGE",
 }
 
 export interface Payload {
@@ -29,6 +30,10 @@ export interface Payload {
     timezone?: string;
   };
   network?: { serverPort?: number };
+  curseforge?: {
+    cfPageUrl?: string;
+    cfApiKey?: string;
+  };
 }
 
 function toSlug(name: string) {
@@ -64,14 +69,30 @@ if(!session) {
     // payload mapping
     const envObj: Record<string, string> = {
       EULA: body.runtime.eula ? "TRUE" : "FALSE",
-      TYPE: body.versioning.type,
-      VERSION: body.versioning.version,
       INIT_MEMORY: body.runtime.memory.init,
       MAX_MEMORY: body.runtime.memory.max,
       TZ: body.runtime.timezone ?? "UTC",
       OVERRIDE_SERVER_PROPERTIES: "TRUE",
       REPLACE_ENV_VARIABLES: "TRUE",
     };
+    
+    // Handle CurseForge-specific configuration
+    if (body.versioning.type === "AUTO_CURSEFORGE") {
+      envObj.TYPE = "AUTO_CURSEFORGE";
+      if (body.curseforge?.cfPageUrl) {
+        envObj.CF_PAGE_URL = body.curseforge.cfPageUrl;
+      }
+      if (body.curseforge?.cfApiKey) {
+        envObj.CF_API_KEY = body.curseforge.cfApiKey;
+      }
+      // For CurseForge, the VERSION is automatically determined by the modpack
+      // We don't need to set it explicitly
+    } else {
+      // For non-CurseForge types, set TYPE and VERSION normally
+      envObj.TYPE = body.versioning.type;
+      envObj.VERSION = body.versioning.version;
+    }
+    
     if (body.runtime.java?.useAikarFlags) envObj.USE_AIKAR_FLAGS = "TRUE";
     if (body.runtime.java?.jvmOpts) envObj.JVM_OPTS = body.runtime.java.jvmOpts;
     if (body.runtime.java?.jvmXXOpts) envObj.JVM_XX_OPTS = body.runtime.java.jvmXXOpts;
@@ -135,6 +156,8 @@ if(!session) {
         volumeName: volumeName,
         port: hostPort,
         ipAddress: hostIp,
+        cfPageUrl: body.curseforge?.cfPageUrl,
+        cfApiKey: body.curseforge?.cfApiKey,
       },
     });
 

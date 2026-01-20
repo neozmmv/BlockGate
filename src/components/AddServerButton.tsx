@@ -11,6 +11,8 @@ export default function AddServerButton() {
   const [eula, setEula] = useState(true);
   const [initMemory, setInitMemory] = useState("2G");
   const [maxMemory, setMaxMemory] = useState("4G");
+  const [cfPageUrl, setCfPageUrl] = useState("");
+  const [cfApiKey, setCfApiKey] = useState("");
 
   useEffect(() => {
     const fetchVersions = async () => {
@@ -28,7 +30,7 @@ export default function AddServerButton() {
   const handleOpenModal = () => setIsModalOpen((v) => !v);
 
   const handleServerCreate = async () => {
-    const payload = {
+    const payload: any = {
       metadata: {
         serverName,
       },
@@ -44,6 +46,15 @@ export default function AddServerButton() {
         },
       },
     };
+    
+    // Add CurseForge-specific configuration if AUTO_CURSEFORGE type is selected
+    if (type === "AUTO_CURSEFORGE") {
+      payload.curseforge = {
+        cfPageUrl,
+        cfApiKey,
+      };
+    }
+    
     const res = await axios.post("/api/servers", payload);
     console.log(res.data);
     setIsModalOpen(false);
@@ -102,6 +113,7 @@ export default function AddServerButton() {
                     <option value="NEOFORGE">NeoForge</option>
                     <option value="SPIGOT">Spigot</option>
                     <option value="PAPER">Paper</option>
+                    <option value="AUTO_CURSEFORGE">CurseForge Modpack</option>
                   </select>
                 </label>
                 <label className="block text-sm text-zinc-300">
@@ -120,6 +132,43 @@ export default function AddServerButton() {
                   </select>
                 </label>
               </div>
+              
+              {/* CurseForge-specific fields */}
+              {type === "AUTO_CURSEFORGE" && (
+                <>
+                  <label className="block text-sm text-zinc-300">
+                    CurseForge Page URL or Slug
+                    <input
+                      value={cfPageUrl}
+                      onChange={(e) => setCfPageUrl(e.target.value)}
+                      placeholder="https://www.curseforge.com/minecraft/modpacks/all-the-mods-8"
+                      className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
+                    />
+                  </label>
+                  <label className="block text-sm text-zinc-300">
+                    CurseForge API Key
+                    <input
+                      type="password"
+                      value={cfApiKey}
+                      onChange={(e) => setCfApiKey(e.target.value)}
+                      placeholder="Your CurseForge API Key"
+                      className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
+                    />
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Get your API key from{" "}
+                      <a
+                        href="https://console.curseforge.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:underline"
+                      >
+                        CurseForge Console
+                      </a>
+                    </p>
+                  </label>
+                </>
+              )}
+              
               <div className="flex justify-end mt-4">
                 <button
                   onClick={handleServerCreate}
