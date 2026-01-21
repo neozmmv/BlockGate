@@ -1,17 +1,19 @@
 import { NextRequest } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import Docker from "dockerode";
+import { auth } from "@/lib/auth";
+import { getDockerClient } from "@/lib/docker";
+import prisma from "@/lib/prisma";
 
-const docker = new Docker();
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const docker = getDockerClient();
 
 // Server-Sent Events endpoint for streaming container logs
 export async function GET(request: NextRequest) {
   try {
     // Authentication check
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session) {
       return new Response("Unauthorized", { status: 401 });
     }
 
@@ -27,9 +29,7 @@ export async function GET(request: NextRequest) {
     const server = await prisma.server.findFirst({
       where: {
         id: serverId,
-        owner: {
-          email: session.user.email,
-        },
+        ownerId: session.user.id,
       },
     });
 
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get the container
-    const container = docker.getContainer(server.containerId);
+    const container = docker.getContainer(server.containerName);
 
     // Verify container exists
     try {
