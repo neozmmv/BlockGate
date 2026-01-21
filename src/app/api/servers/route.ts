@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 const docker = getDockerClient();
 const IMAGE = "itzg/minecraft-server:latest";
+const NETWORK_NAME = "postgres-network"; // Same network as the panel container
 
 enum versionType {
   VANILLA = "VANILLA",
@@ -48,6 +49,26 @@ async function ensureImage(image: string) {
         docker.modem.followProgress(stream, (err2) => (err2 ? reject(err2) : resolve()));
       });
     });
+  }
+}
+
+async function ensureNetwork(networkName: string) {
+  try {
+    // Check if network exists
+    await docker.getNetwork(networkName).inspect();
+  } catch {
+    // Network doesn't exist, create it
+    try {
+      await docker.createNetwork({
+        Name: networkName,
+        Driver: "bridge",
+      });
+    } catch (err: any) {
+      // Ignore if network was created by another process
+      if (!err.message?.includes("already exists")) {
+        throw err;
+      }
+    }
   }
 }
 
@@ -120,9 +141,10 @@ if(!session) {
     
     const Env = Object.entries(envObj).map(([k, v]) => `${k}=${v}`);
 
-    // Guarantee image + volume
+    // Guarantee image + volume + network
     await ensureImage(IMAGE);
     await docker.createVolume({ Name: volumeName }).catch(() => { /* se existir, reutiliza */ });
+    await ensureNetwork(NETWORK_NAME);
 
     // Port mapping - Use the same port for both container and host
     const ExposedPorts: Record<string, {}> = { 
@@ -147,6 +169,7 @@ if(!session) {
         Mounts: [{ Target: "/data", Source: volumeName, Type: "volume" }],
         PortBindings,
         RestartPolicy: { Name: "unless-stopped" },
+        NetworkMode: NETWORK_NAME, // Connect to the same network as the panel
       },
       Labels: {
         "com.cubegate.server": slug,
