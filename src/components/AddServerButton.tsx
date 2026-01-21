@@ -14,6 +14,7 @@ export default function AddServerButton({ session }: { session?: any }) {
   const [cfApi, setCfApi] = useState<string | null>(null);
   const [port, setPort] = useState("25565");
   const [cfPageUrl, setCfPageUrl] = useState("");
+  const [javaVersion, setJavaVersion] = useState("17");
 
   useEffect(() => {
     const fetchVersions = async () => {
@@ -50,6 +51,9 @@ export default function AddServerButton({ session }: { session?: any }) {
         memory: {
           init: initMemory,
           max: maxMemory,
+        },
+        java: {
+          version: javaVersion,
         },
       },
       network: {
@@ -157,6 +161,23 @@ export default function AddServerButton({ session }: { session?: any }) {
                     className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
                   />
                 </div>
+              )}
+              {(type === "FORGE" || type === "NEOFORGE" || type === "AUTO_CURSEFORGE") && (
+                <label className="block text-sm text-zinc-300">
+                  Java Version
+                  <select
+                    value={javaVersion}
+                    onChange={(e) => setJavaVersion(e.target.value)}
+                    className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
+                  >
+                    <option value="8">Java 8 (Legacy Forge 1.12 and older)</option>
+                    <option value="17">Java 17 (Modern versions 1.17+)</option>
+                    <option value="21">Java 21 (Latest 1.20.5+)</option>
+                  </select>
+                  <p className="text-zinc-400 text-xs mt-1">
+                    Select the correct Java version for your Minecraft/Forge version
+                  </p>
+                </label>
               )}
               <label className="block text-sm text-zinc-300">
                 Server Port

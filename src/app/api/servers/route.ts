@@ -28,7 +28,7 @@ export interface Payload {
   runtime: {
     eula: boolean;
     memory: { init: string; max: string };
-    java?: { useAikarFlags?: boolean; jvmOpts?: string; jvmXXOpts?: string };
+    java?: { useAikarFlags?: boolean; jvmOpts?: string; jvmXXOpts?: string; version?: string };
     timezone?: string;
   };
   network?: { serverPort?: number };
@@ -85,6 +85,7 @@ if(!session) {
     if (body.runtime.java?.useAikarFlags) envObj.USE_AIKAR_FLAGS = "TRUE";
     if (body.runtime.java?.jvmOpts) envObj.JVM_OPTS = body.runtime.java.jvmOpts;
     if (body.runtime.java?.jvmXXOpts) envObj.JVM_XX_OPTS = body.runtime.java.jvmXXOpts;
+    if (body.runtime.java?.version) envObj.JAVA_VERSION = body.runtime.java.version;
 
     // for AUTO_CURSEFORGE
 

@@ -272,6 +272,32 @@ export default function ServerManageClient({
           <p className="text-zinc-400 text-sm">{serverInfo.description || "No description"}</p>
         </div>
 
+        {/* Restarting Alert */}
+        {containerInfo?.status === "restarting" && (
+          <div className="mb-6 bg-yellow-900/20 border border-yellow-500 rounded-md p-4">
+            <div className="flex items-start gap-3">
+              <span className="text-yellow-500 text-xl">⚠️</span>
+              <div>
+                <h3 className="text-yellow-500 font-semibold mb-1">Container is Restarting</h3>
+                <p className="text-zinc-300 text-sm mb-2">
+                  The server container is stuck in a restart loop. This is often caused by an incorrect Java version.
+                </p>
+                <p className="text-zinc-400 text-xs">
+                  <strong>Common fixes:</strong>
+                </p>
+                <ul className="text-zinc-400 text-xs list-disc ml-4 mt-1">
+                  <li>For Minecraft 1.12.2 and older Forge: Use Java 8</li>
+                  <li>For Minecraft 1.17 - 1.20.4: Use Java 17</li>
+                  <li>For Minecraft 1.20.5+: Use Java 21</li>
+                </ul>
+                <p className="text-zinc-400 text-xs mt-2">
+                  You may need to recreate the server with the correct Java version.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-4 mb-6 border-b border-zinc-700">
           <button
