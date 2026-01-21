@@ -56,15 +56,16 @@ export async function GET(req: NextRequest) {
 
     let logs = "";
     for await (const chunk of logStream) {
-      logs += chunk.toString('utf8');
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      // Skip Docker stream header (8 bytes) and get the actual data
+      if (buffer.length > 8) {
+        logs += buffer.subarray(8).toString('utf-8');
+      }
     }
-
-    // Clean up Docker stream headers
-    const cleanLogs = logs.replace(/^.{8}/gm, '');
 
     return NextResponse.json({
       ok: true,
-      logs: cleanLogs,
+      logs: logs,
     });
   } catch (err: any) {
     return NextResponse.json(
