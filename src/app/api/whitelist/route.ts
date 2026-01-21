@@ -139,16 +139,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Add player to whitelist using RCON or direct command
-      const exec = await container.exec({
-        Cmd: ["sh", "-c", `echo "whitelist add ${name}" > /data/stdin.txt || true`],
-        AttachStdout: true,
-        AttachStderr: true,
-      });
-
-      await exec.start({ Detach: false });
-
-      // Also update whitelist.json directly
+      // Read ops.json
       const readExec = await container.exec({
         Cmd: ["sh", "-c", "cat /data/whitelist.json 2>/dev/null || echo '[]'"],
         AttachStdout: true,
@@ -174,9 +165,10 @@ export async function POST(req: NextRequest) {
       if (!exists) {
         whitelist.push({ name, uuid: uuid || "" });
         
-        const escapedContent = JSON.stringify(whitelist).replace(/'/g, "'\\''");
+        // Use base64 encoding to avoid shell escaping issues
+        const base64Content = Buffer.from(JSON.stringify(whitelist)).toString('base64');
         const writeExec = await container.exec({
-          Cmd: ["sh", "-c", `echo '${escapedContent}' > /data/whitelist.json`],
+          Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/whitelist.json`],
           AttachStdout: true,
           AttachStderr: true,
         });
@@ -213,9 +205,10 @@ export async function POST(req: NextRequest) {
 
       whitelist = whitelist.filter((p: any) => p.name !== name);
       
-      const escapedContent = JSON.stringify(whitelist).replace(/'/g, "'\\''");
+      // Use base64 encoding to avoid shell escaping issues
+      const base64Content = Buffer.from(JSON.stringify(whitelist)).toString('base64');
       const writeExec = await container.exec({
-        Cmd: ["sh", "-c", `echo '${escapedContent}' > /data/whitelist.json`],
+        Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/whitelist.json`],
         AttachStdout: true,
         AttachStderr: true,
       });

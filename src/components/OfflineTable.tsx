@@ -2,6 +2,7 @@
 import axios from "axios";
 import { useState, useEffect, useCallback } from "react";
 import React from "react";
+import { useRouter } from "next/navigation";
 
 type Server = {
   id: string;
@@ -18,6 +19,7 @@ type Server = {
 };
 
 export default function InactiveTable() {
+  const router = useRouter();
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,7 +86,7 @@ export default function InactiveTable() {
             <td className="p-4">
               <div className="flex justify-center gap-4">
                 <button
-                  onClick={() => window.location.href = `/panel/server/${server.id}/manage`}
+                  onClick={() => router.push(`/panel/server/${server.id}/manage`)}
                   className="cursor-pointer px-3 py-1 bg-blue-500 rounded-md hover:bg-blue-500/80 transition-all"
                 >
                   Manage

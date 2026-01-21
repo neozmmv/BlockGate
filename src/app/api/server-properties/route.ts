@@ -3,6 +3,7 @@ import { getDockerClient } from "@/lib/docker";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
+import { Readable } from "stream";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,12 +125,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Write server.properties file
-    // Escape content for shell
-    const escapedContent = content.replace(/'/g, "'\\''");
+    // Write server.properties file using base64 encoding to avoid shell escaping issues
+    const base64Content = Buffer.from(content).toString('base64');
     
     const exec = await container.exec({
-      Cmd: ["sh", "-c", `echo '${escapedContent}' > /data/server.properties`],
+      Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/server.properties`],
       AttachStdout: true,
       AttachStderr: true,
     });

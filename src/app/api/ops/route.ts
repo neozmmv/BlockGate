@@ -170,9 +170,10 @@ export async function POST(req: NextRequest) {
           bypassesPlayerLimit: false
         });
         
-        const escapedContent = JSON.stringify(ops).replace(/'/g, "'\\''");
+        // Use base64 encoding to avoid shell escaping issues
+        const base64Content = Buffer.from(JSON.stringify(ops)).toString('base64');
         const writeExec = await container.exec({
-          Cmd: ["sh", "-c", `echo '${escapedContent}' > /data/ops.json`],
+          Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/ops.json`],
           AttachStdout: true,
           AttachStderr: true,
         });
@@ -209,9 +210,10 @@ export async function POST(req: NextRequest) {
 
       ops = ops.filter((p: any) => p.name !== name);
       
-      const escapedContent = JSON.stringify(ops).replace(/'/g, "'\\''");
+      // Use base64 encoding to avoid shell escaping issues
+      const base64Content = Buffer.from(JSON.stringify(ops)).toString('base64');
       const writeExec = await container.exec({
-        Cmd: ["sh", "-c", `echo '${escapedContent}' > /data/ops.json`],
+        Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/ops.json`],
         AttachStdout: true,
         AttachStderr: true,
       });
