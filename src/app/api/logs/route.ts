@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
       stdout: true,
       stderr: true,
       follow: false,
-      tail: parseInt(tail),
+      tail: tail, // Docker API expects string
       timestamps: true,
     });
 
