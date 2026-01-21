@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 const docker = getDockerClient();
 const IMAGE = "itzg/minecraft-server:latest";
+const NETWORK_NAME = "postgres-network"; // Same network as the panel container
 
 enum versionType {
   VANILLA = "VANILLA",
@@ -17,15 +18,18 @@ enum versionType {
   NEOFORGE = "NEOFORGE",
   SPIGOT = "SPIGOT",
   PAPER = "PAPER",
+  CURSEFORGE = "AUTO_CURSEFORGE",
 }
 
 export interface Payload {
   metadata: { serverName: string; description?: string };
-  versioning: { type: versionType; version: string; build?: string | null };
+  versioning: { type: versionType; version?: string; build?: string | null };
+  CF_API_KEY?: string; // for AUTO_CURSEFORGE
+  CF_PAGE_URL?: string; // for AUTO_CURSEFORGE
   runtime: {
     eula: boolean;
     memory: { init: string; max: string };
-    java?: { useAikarFlags?: boolean; jvmOpts?: string; jvmXXOpts?: string };
+    java?: { useAikarFlags?: boolean; jvmOpts?: string; jvmXXOpts?: string; version?: string };
     timezone?: string;
   };
   network?: { serverPort?: number };
@@ -48,6 +52,26 @@ async function ensureImage(image: string) {
   }
 }
 
+async function ensureNetwork(networkName: string) {
+  try {
+    // Check if network exists
+    await docker.getNetwork(networkName).inspect();
+  } catch {
+    // Network doesn't exist, create it
+    try {
+      await docker.createNetwork({
+        Name: networkName,
+        Driver: "bridge",
+      });
+    } catch (err: any) {
+      // Ignore if network was created by another process
+      if (!err.message?.includes("already exists")) {
+        throw err;
+      }
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
     const session  = await auth.api.getSession({
     headers : await headers(),
@@ -58,6 +82,13 @@ if(!session) {
       { status: 401 }
     );
 }
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { cf_api: true }, // only select cf_api field since we only need that
+  });
+  
+  const cfApiKey = user?.cf_api ?? ""; // get current user's curseforge api
+
   try {
     const body = (await req.json()) as Payload;
 
@@ -65,7 +96,7 @@ if(!session) {
     const envObj: Record<string, string> = {
       EULA: body.runtime.eula ? "TRUE" : "FALSE",
       TYPE: body.versioning.type,
-      VERSION: body.versioning.version,
+      VERSION: body.versioning.version ?? "", // version not required for curseforge, not sure
       INIT_MEMORY: body.runtime.memory.init,
       MAX_MEMORY: body.runtime.memory.max,
       TZ: body.runtime.timezone ?? "UTC",
@@ -75,8 +106,27 @@ if(!session) {
     if (body.runtime.java?.useAikarFlags) envObj.USE_AIKAR_FLAGS = "TRUE";
     if (body.runtime.java?.jvmOpts) envObj.JVM_OPTS = body.runtime.java.jvmOpts;
     if (body.runtime.java?.jvmXXOpts) envObj.JVM_XX_OPTS = body.runtime.java.jvmXXOpts;
+    if (body.runtime.java?.version) envObj.JAVA_VERSION = body.runtime.java.version;
 
-    const Env = Object.entries(envObj).map(([k, v]) => `${k}=${v}`);
+    // for AUTO_CURSEFORGE
+
+    if(body.versioning.type === versionType.CURSEFORGE) {
+      // !! using stored api!!
+      if(!cfApiKey) {
+        return NextResponse.json({
+          ok: false,
+          error: "No CurseForge API key found for user. Please set it in your general settings.",
+        }, { status: 400 });
+      }
+      if(!body.CF_PAGE_URL) {
+        return NextResponse.json({
+          ok: false,
+          error: "Missing CF_PAGE_URL for server. Get the modpack page URL from CurseForge.",
+        }, { status: 400 });
+      }
+      envObj.CF_API_KEY = cfApiKey;
+      envObj.CF_PAGE_URL = body.CF_PAGE_URL;
+    }
 
     // Define name and volume based on server name
     const slug = toSlug(body.metadata.serverName);
@@ -84,17 +134,30 @@ if(!session) {
     const volumeName = `mc-data-${slug}`;
     const hostPort = body.network?.serverPort ?? 25565;
 
-    // Guarantee image + volume
+    // Add RCON configuration to environment
+    envObj.ENABLE_RCON = "TRUE";
+    envObj.RCON_PORT = String(hostPort + 10);
+    envObj.RCON_PASSWORD = `rcon-${slug}`; // Simple password for now
+    
+    const Env = Object.entries(envObj).map(([k, v]) => `${k}=${v}`);
+
+    // Guarantee image + volume + network
     await ensureImage(IMAGE);
     await docker.createVolume({ Name: volumeName }).catch(() => { /* se existir, reutiliza */ });
+    await ensureNetwork(NETWORK_NAME);
 
-    // Port mapping
-    const ExposedPorts: Record<string, {}> = { "25565/tcp": {} };
+    // Port mapping - Use the same port for both container and host
+    const ExposedPorts: Record<string, {}> = { 
+      [`${hostPort}/tcp`]: {},
+      [`${hostPort + 10}/tcp`]: {} // RCON port
+    };
     const PortBindings: Record<string, Array<{ HostPort: string }>> = {
-      "25565/tcp": [{ HostPort: String(hostPort) }],
+      [`${hostPort}/tcp`]: [{ HostPort: String(hostPort) }],
+      [`${hostPort + 10}/tcp`]: [{ HostPort: String(hostPort + 10) }], // RCON port
     };
 
     // Container creation
+    // i want to send PORT via request if possible later
     const container = await docker.createContainer({
       name: containerName,
       Image: IMAGE,
@@ -106,6 +169,7 @@ if(!session) {
         Mounts: [{ Target: "/data", Source: volumeName, Type: "volume" }],
         PortBindings,
         RestartPolicy: { Name: "unless-stopped" },
+        NetworkMode: NETWORK_NAME, // Connect to the same network as the panel
       },
       Labels: {
         "com.cubegate.server": slug,
@@ -127,7 +191,7 @@ if(!session) {
         containerId: info.Id,
         eula: body.runtime.eula,
         serverType: body.versioning.type,
-        version: body.versioning.version,
+        version: body.versioning.version ?? "", // not required for curseforge, not sure if this is ok
         minMemoryMB: body.runtime.memory.init,
         maxMemoryMB: body.runtime.memory.max,
         ownerId: session.user.id,

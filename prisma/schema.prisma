@@ -5,29 +5,29 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL") // trying to fix on docker compose
+  url      = env("DATABASE_URL")
 }
 
 model User {
   id            String    @id
   name          String
-  email         String
+  email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
-  sessions      Session[]
+  cf_api        String?
   accounts      Account[]
   servers       Server[]
+  sessions      Session[]
 
-  @@unique([email])
   @@map("user")
 }
 
 model Session {
   id        String   @id
   expiresAt DateTime
-  token     String
+  token     String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   ipAddress String?
@@ -35,7 +35,6 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([token])
   @@map("session")
 }
 
@@ -44,7 +43,6 @@ model Account {
   accountId             String
   providerId            String
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -54,6 +52,7 @@ model Account {
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("account")
 }
@@ -69,6 +68,32 @@ model Verification {
   @@map("verification")
 }
 
+model Server {
+  id            String       @id @default(uuid())
+  name          String
+  description   String?
+  eula          Boolean      @default(true)
+  version       String
+  minMemoryMB   String       @default("2G")
+  maxMemoryMB   String       @default("4G")
+  serverType    ServerType
+  status        ServerStatus @default(CREATING)
+  ipAddress     String       @db.Inet
+  port          Int
+  containerName String       @unique
+  containerId   String?      @unique
+  dockerImage   String       @default("itzg/minecraft-server:latest")
+  ownerId       String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt
+  volumeName    String       @unique
+  owner         User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ipAddress, port])
+  @@index([ownerId, status])
+  @@map("servers")
+}
+
 enum ServerType {
   VANILLA
   FORGE
@@ -76,6 +101,7 @@ enum ServerType {
   NEOFORGE
   SPIGOT
   PAPER
+  AUTO_CURSEFORGE
 }
 
 enum ServerStatus {
@@ -83,37 +109,4 @@ enum ServerStatus {
   RUNNING
   STOPPED
   ERROR
-}
-
-model Server {
-  id          String  @id @default(uuid())
-  name        String
-  description String?
-
-  eula    Boolean @default(true)
-  version String
-
-  minMemoryMB String @default("2G")
-  maxMemoryMB String @default("4G")
-
-  serverType ServerType
-  status     ServerStatus @default(CREATING)
-
-  ipAddress String @db.Inet
-  port      Int
-
-  containerName String  @unique
-  volumeName    String  @unique
-  containerId   String? @unique
-  dockerImage   String  @default("itzg/minecraft-server:latest")
-
-  ownerId String
-  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-
-  @@unique([ipAddress, port])
-  @@index([ownerId, status])
-  @@map("servers")
 }

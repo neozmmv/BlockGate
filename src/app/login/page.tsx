@@ -16,7 +16,8 @@ export default function Login() {
     password: z.string().min(3, "Password must be at least 3 characters long"),
   });
 
-  const handleInfo = async () => {
+  const handleInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
       const userInfo = userSchema.parse({ email, password });
       const result = await signIn(userInfo.email, userInfo.password);
@@ -45,29 +46,31 @@ export default function Login() {
           </p>
           <div className="flex justify-center items-center">
             <div className="border border-zinc-700 h-48 w-96 md:h-72 md:w-172 bg-[#1c2536] rounded-2xl drop-shadow-xl flex flex-col justify-between">
-              <div className="px-8 pt-8">
-                User
-                <Input
-                  className="border-zinc-500 mt-2 mb-4"
-                  placeholder="admin@example.com"
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                Password
-                <Input
-                  className="border-zinc-500 mt-2"
-                  type="password"
-                  placeholder="**********"
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <div className="gap-8 rounded-b-xl h-28 flex items-center justify-center">
-                <button
-                  onClick={handleInfo}
-                  className="px-8 py-4 text-xl bg-blue-500 rounded-xl text-md cursor-pointer hover:bg-blue-600 transition-all"
-                >
-                  Log In
-                </button>
-              </div>
+              <form onSubmit={handleInfo}>
+                <div className="px-8 pt-8">
+                  User
+                  <Input
+                    className="border-zinc-500 mt-2 mb-4"
+                    placeholder="admin@example.com"
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  Password
+                  <Input
+                    className="border-zinc-500 mt-2"
+                    type="password"
+                    placeholder="**********"
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                <div className="gap-8 rounded-b-xl h-28 flex items-center justify-center">
+                  <button
+                    type="submit"
+                    className="px-8 py-4 text-xl bg-blue-500 rounded-xl text-md cursor-pointer hover:bg-blue-600 transition-all"
+                  >
+                    Log In
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

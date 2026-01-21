@@ -1,4 +1,4 @@
-import { House, Cog } from "lucide-react";
+import { House, Cog, Server } from "lucide-react";
 const default_mr = "mr-4";
 const options = [
   // overview page not ready yet
@@ -10,6 +10,11 @@ const options = [
   {
     label: "Servers",
     href: "/panel/server",
+    icon: <Server className={default_mr} />,
+  },
+  {
+    label: "General",
+    href: "/panel/general",
     icon: <Cog className={default_mr} />,
   },
 ];

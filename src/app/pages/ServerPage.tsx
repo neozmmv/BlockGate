@@ -16,7 +16,7 @@ export default function ServerPage({ session }: { session: any }) {
       <div className="flex-1 bg-[#0b1019] h-full p-8">
         <div className="flex justify-between mb-8">
           <h1 className="text-white text-2xl">Server Management</h1>
-          <AddServerButton />
+          <AddServerButton session={session} />
         </div>
         <div className="space-y-8">
           {/* Active servers table */}
