@@ -81,8 +81,9 @@ export default function ServerManageClient({
   const [lastLogTimestamp, setLastLogTimestamp] = useState<string | null>(null);
 
   // Logs state
-  const [logs, setLogs] = useState("");
-  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [logsConnected, setLogsConnected] = useState(false);
+  const [logsError, setLogsError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchServerInfo();
@@ -98,7 +99,48 @@ export default function ServerManageClient({
     } else if (activeTab === "ops") {
       fetchOps();
     } else if (activeTab === "logs") {
-      fetchLogs();
+      // Start SSE streaming for logs
+      const eventSource = new EventSource(`/api/logs/stream?serverId=${serverId}`);
+      
+      eventSource.onopen = () => {
+        setLogsConnected(true);
+        setLogsError(null);
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          
+          if (message.type === "connected") {
+            console.log("Log stream connected");
+          } else if (message.type === "log") {
+            setLogs((prev) => {
+              const newLogs = [...prev, message.data];
+              // Keep only last 500 lines to prevent memory issues
+              return newLogs.slice(-500);
+            });
+          } else if (message.type === "end") {
+            setLogsConnected(false);
+          } else if (message.type === "error") {
+            setLogsError(message.data);
+            setLogsConnected(false);
+          }
+        } catch (error) {
+          console.error("Error parsing log message:", error);
+        }
+      };
+
+      eventSource.onerror = () => {
+        setLogsConnected(false);
+        setLogsError("Connection lost. Reconnecting...");
+        // EventSource automatically attempts to reconnect
+      };
+
+      // Cleanup on unmount or tab change
+      return () => {
+        eventSource.close();
+        setLogsConnected(false);
+      };
     } else if (activeTab === "rcon") {
       // Start streaming logs when RCON tab is active
       if (rconLogsEnabled) {
@@ -108,7 +150,7 @@ export default function ServerManageClient({
         return () => clearInterval(interval);
       }
     }
-  }, [activeTab, rconLogsEnabled]);
+  }, [activeTab, rconLogsEnabled, serverId]);
 
   const fetchServerInfo = async () => {
     setLoading(true);
@@ -331,20 +373,8 @@ export default function ServerManageClient({
     }
   };
 
-  const fetchLogs = async () => {
-    setLoadingLogs(true);
-    try {
-      const { data } = await axios.get(`/api/logs?id=${serverId}&tail=200`);
-      if (data.ok) {
-        setLogs(data.logs);
-      }
-    } catch (error) {
-      console.error("Error fetching logs:", error);
-    } finally {
-      setLoadingLogs(false);
-    }
-  };
-
+  // fetchLogs function removed - now using SSE streaming
+  
   const fetchLogsForRcon = async () => {
     try {
       const { data } = await axios.get(`/api/logs?id=${serverId}&tail=10`);
@@ -874,20 +904,46 @@ export default function ServerManageClient({
         {activeTab === "logs" && (
           <div className="bg-[#0c1320] rounded-md p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-white text-lg">Container Logs</h2>
-              <button
-                onClick={fetchLogs}
-                disabled={loadingLogs}
-                className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600 transition-all disabled:opacity-50"
-              >
-                {loadingLogs ? "Refreshing..." : "Refresh"}
-              </button>
+              <h2 className="text-white text-lg">Container Logs (Live Stream)</h2>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${logsConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className="text-zinc-400 text-sm">
+                    {logsConnected ? 'Connected' : 'Disconnected'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setLogs([])}
+                  className="px-4 py-2 bg-zinc-700 rounded-md hover:bg-zinc-600 transition-all"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
             
-            <div className="bg-[#0b1624] rounded p-4 h-[600px] overflow-y-auto">
+            {logsError && (
+              <div className="mb-4 bg-red-900/20 border border-red-500 rounded-md p-3 text-red-400 text-sm">
+                {logsError}
+              </div>
+            )}
+            
+            <div 
+              className="bg-[#0b1624] rounded p-4 h-[600px] overflow-y-auto"
+              ref={(el) => {
+                if (el && logs.length > 0) {
+                  el.scrollTop = el.scrollHeight;
+                }
+              }}
+            >
               <pre className="text-zinc-300 text-xs font-mono whitespace-pre-wrap">
-                {logs || "No logs available"}
+                {logs.length > 0 ? logs.join('') : 
+                  logsConnected ? "Waiting for logs..." : "Connecting to log stream..."}
               </pre>
+            </div>
+            
+            <div className="mt-2 text-zinc-500 text-xs">
+              <p>📊 Showing last {logs.length} lines (max 500). Auto-scrolls to latest.</p>
+              <p>💡 Logs stream in real-time using Server-Sent Events.</p>
             </div>
           </div>
         )}
