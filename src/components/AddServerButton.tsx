@@ -190,6 +190,30 @@ export default function AddServerButton({ session }: { session?: any }) {
                   className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
                 />
               </label>
+              <div className="flex gap-4">
+                <label className="block text-sm text-zinc-300 flex-1">
+                  Initial Memory
+                  <input
+                    type="text"
+                    value={initMemory}
+                    onChange={(e) => setInitMemory(e.target.value)}
+                    placeholder="2G"
+                    className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
+                  />
+                  <p className="text-zinc-400 text-xs mt-1">e.g., 1G, 2G, 512M</p>
+                </label>
+                <label className="block text-sm text-zinc-300 flex-1">
+                  Maximum Memory
+                  <input
+                    type="text"
+                    value={maxMemory}
+                    onChange={(e) => setMaxMemory(e.target.value)}
+                    placeholder="4G"
+                    className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
+                  />
+                  <p className="text-zinc-400 text-xs mt-1">e.g., 4G, 8G, 16G</p>
+                </label>
+              </div>
               <div className="flex justify-end mt-4">
                 <button
                   onClick={handleServerCreate}

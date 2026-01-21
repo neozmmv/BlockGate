@@ -22,6 +22,9 @@ export default function InactiveTable() {
   const router = useRouter();
   const [servers, setServers] = useState<Server[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [serverToDelete, setServerToDelete] = useState<string | null>(null);
+  const [deleteInput, setDeleteInput] = useState("");
 
   const keepStopped = (s: Server) =>
     typeof s.status === "string" ? s.status === "STOPPED" : !Boolean(s.status);
@@ -42,8 +45,19 @@ export default function InactiveTable() {
   }, [fetchServers]);
 
   async function handleDeleteServer(serverId: string) {
-    await axios.delete(`/api/servers?id=${serverId}`);
-    await fetchServers();
+    setServerToDelete(serverId);
+    setDeleteConfirmOpen(true);
+    setDeleteInput("");
+  }
+
+  async function confirmDelete() {
+    if (deleteInput === "DELETE" && serverToDelete) {
+      await axios.delete(`/api/servers?id=${serverToDelete}`);
+      setDeleteConfirmOpen(false);
+      setServerToDelete(null);
+      setDeleteInput("");
+      await fetchServers();
+    }
   }
 
   async function handleStartServer(serverId: string) {
@@ -56,6 +70,7 @@ export default function InactiveTable() {
   }
 
   return (
+    <>
     <table className="w-full table-auto">
       <thead>
         <tr className="text-zinc-400 text-sm">
@@ -117,5 +132,53 @@ export default function InactiveTable() {
         )}
       </tbody>
     </table>
+    {deleteConfirmOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div
+          className="absolute inset-0 bg-black/50"
+          onClick={() => {
+            setDeleteConfirmOpen(false);
+            setServerToDelete(null);
+            setDeleteInput("");
+          }}
+        />
+        <div className="relative z-10 w-full max-w-md rounded-xl bg-[#0c1320] p-6 shadow-xl">
+          <h3 className="text-white text-lg mb-4">Confirm Server Deletion</h3>
+          <p className="text-zinc-400 text-sm mb-4">
+            This action cannot be undone. All server data will be permanently deleted.
+          </p>
+          <p className="text-zinc-300 text-sm mb-2">
+            Type <span className="font-bold text-red-500">DELETE</span> to confirm:
+          </p>
+          <input
+            type="text"
+            value={deleteInput}
+            onChange={(e) => setDeleteInput(e.target.value)}
+            className="w-full rounded-md bg-[#0b1624] text-white p-2 outline-none mb-4"
+            placeholder="Type DELETE"
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => {
+                setDeleteConfirmOpen(false);
+                setServerToDelete(null);
+                setDeleteInput("");
+              }}
+              className="px-4 py-2 bg-zinc-700 rounded-md hover:bg-zinc-600 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDelete}
+              disabled={deleteInput !== "DELETE"}
+              className="px-4 py-2 bg-red-500 rounded-md hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Delete Server
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   );
 }
