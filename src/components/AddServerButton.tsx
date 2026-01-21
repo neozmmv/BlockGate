@@ -12,6 +12,8 @@ export default function AddServerButton({ session }: { session?: any }) {
   const [initMemory, setInitMemory] = useState("2G");
   const [maxMemory, setMaxMemory] = useState("4G");
   const [cfApi, setCfApi] = useState<string | null>(null);
+  const [port, setPort] = useState("25565");
+  const [cfPageUrl, setCfPageUrl] = useState("");
 
   useEffect(() => {
     const fetchVersions = async () => {
@@ -50,6 +52,10 @@ export default function AddServerButton({ session }: { session?: any }) {
           max: maxMemory,
         },
       },
+      network: {
+        serverPort: parseInt(port),
+      },
+      ...(type === "AUTO_CURSEFORGE" && { CF_PAGE_URL: cfPageUrl }),
     };
     const res = await axios.post("/api/servers", payload);
     console.log(res.data);
@@ -145,12 +151,24 @@ export default function AddServerButton({ session }: { session?: any }) {
                     Modpack URL
                   </label>
                   <input
-                    value={serverName}
-                    onChange={(e) => setServerName(e.target.value)}
+                    value={cfPageUrl}
+                    onChange={(e) => setCfPageUrl(e.target.value)}
+                    placeholder="https://www.curseforge.com/minecraft/modpacks/..."
                     className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
                   />
                 </div>
               )}
+              <label className="block text-sm text-zinc-300">
+                Server Port
+                <input
+                  type="number"
+                  value={port}
+                  onChange={(e) => setPort(e.target.value)}
+                  min="1024"
+                  max="65535"
+                  className="mt-1 w-full rounded-md bg-[#0b1624] text-white p-2 outline-none"
+                />
+              </label>
               <div className="flex justify-end mt-4">
                 <button
                   onClick={handleServerCreate}
