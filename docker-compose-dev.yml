@@ -1,4 +1,28 @@
 services:
+  blockgate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: blockgate:local
+    container_name: blockgate
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # makes the container see the host docker daemon
+    user: "0:0" # run as root to access the docker socket
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://cubegate:cubegate@database:5432/cubegate
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      PORT: "3000"
+      MIGRATE: "true"
+      HOSTNAME: "0.0.0.0"
+      TZ: ${TZ:-UTC}
+    ports:
+      - "3000:3000"
+    networks: [postgres-network]
+    restart: unless-stopped
+
   database:
     image: postgres:16-alpine
     ports:
