@@ -43,7 +43,7 @@ export default function ServerManageClient({
   const [playerCount, setPlayerCount] = useState(0);
   const [maxPlayers, setMaxPlayers] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "files" | "properties" | "whitelist" | "ops">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "files" | "properties" | "whitelist" | "ops" | "rcon" | "logs">("overview");
   
   // Files state
   const [files, setFiles] = useState<FileEntry[]>([]);
@@ -73,6 +73,15 @@ export default function ServerManageClient({
   const [editingFileContent, setEditingFileContent] = useState("");
   const [savingFile, setSavingFile] = useState(false);
 
+  // RCON state
+  const [rconCommand, setRconCommand] = useState("");
+  const [rconOutput, setRconOutput] = useState<string[]>([]);
+  const [sendingRcon, setSendingRcon] = useState(false);
+
+  // Logs state
+  const [logs, setLogs] = useState("");
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
   useEffect(() => {
     fetchServerInfo();
   }, [serverId]);
@@ -86,6 +95,8 @@ export default function ServerManageClient({
       fetchWhitelist();
     } else if (activeTab === "ops") {
       fetchOps();
+    } else if (activeTab === "logs") {
+      fetchLogs();
     }
   }, [activeTab]);
 
@@ -288,6 +299,42 @@ export default function ServerManageClient({
     }
   };
 
+  const sendRconCommand = async () => {
+    if (!rconCommand.trim()) return;
+    
+    setSendingRcon(true);
+    try {
+      const { data } = await axios.post(`/api/rcon`, {
+        serverId,
+        command: rconCommand.trim(),
+      });
+      if (data.ok) {
+        setRconOutput(prev => [...prev, `> ${rconCommand}`, data.response]);
+        setRconCommand("");
+      } else {
+        setRconOutput(prev => [...prev, `> ${rconCommand}`, `Error: ${data.error}`]);
+      }
+    } catch (error: any) {
+      setRconOutput(prev => [...prev, `> ${rconCommand}`, `Error: ${error.message}`]);
+    } finally {
+      setSendingRcon(false);
+    }
+  };
+
+  const fetchLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const { data } = await axios.get(`/api/logs?id=${serverId}&tail=200`);
+      if (data.ok) {
+        setLogs(data.logs);
+      }
+    } catch (error) {
+      console.error("Error fetching logs:", error);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 bg-[#0b1019] h-full p-8">
@@ -389,6 +436,26 @@ export default function ServerManageClient({
             }`}
           >
             OPs
+          </button>
+          <button
+            onClick={() => setActiveTab("rcon")}
+            className={`px-4 py-2 ${
+              activeTab === "rcon"
+                ? "text-blue-400 border-b-2 border-blue-400"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            RCON
+          </button>
+          <button
+            onClick={() => setActiveTab("logs")}
+            className={`px-4 py-2 ${
+              activeTab === "logs"
+                ? "text-blue-400 border-b-2 border-blue-400"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            Logs
           </button>
         </div>
 
@@ -676,6 +743,70 @@ export default function ServerManageClient({
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* RCON Tab */}
+        {activeTab === "rcon" && (
+          <div className="bg-[#0c1320] rounded-md p-6">
+            <h2 className="text-white text-lg mb-4">RCON Console</h2>
+            <p className="text-zinc-400 text-sm mb-4">
+              Send commands to the server via RCON. Common commands: list, say, stop, whitelist, op
+            </p>
+            
+            <div className="bg-[#0b1624] rounded p-4 mb-4 h-96 overflow-y-auto">
+              <div className="font-mono text-sm space-y-1">
+                {rconOutput.map((line, idx) => (
+                  <div key={idx} className={line.startsWith('>') ? 'text-blue-400' : 'text-zinc-300'}>
+                    {line}
+                  </div>
+                ))}
+                {rconOutput.length === 0 && (
+                  <div className="text-zinc-500">No commands sent yet. Type a command below.</div>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={rconCommand}
+                onChange={(e) => setRconCommand(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && sendRconCommand()}
+                placeholder="Enter command (e.g., list, say Hello)"
+                className="flex-1 p-2 bg-[#0b1624] text-white rounded outline-none font-mono"
+                disabled={sendingRcon}
+              />
+              <button
+                onClick={sendRconCommand}
+                disabled={sendingRcon || !rconCommand.trim()}
+                className="px-6 py-2 bg-blue-500 rounded-md hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendingRcon ? "Sending..." : "Send"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Logs Tab */}
+        {activeTab === "logs" && (
+          <div className="bg-[#0c1320] rounded-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white text-lg">Container Logs</h2>
+              <button
+                onClick={fetchLogs}
+                disabled={loadingLogs}
+                className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600 transition-all disabled:opacity-50"
+              >
+                {loadingLogs ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
+            
+            <div className="bg-[#0b1624] rounded p-4 h-[600px] overflow-y-auto">
+              <pre className="text-zinc-300 text-xs font-mono whitespace-pre-wrap">
+                {logs || "No logs available"}
+              </pre>
+            </div>
           </div>
         )}
       </div>
