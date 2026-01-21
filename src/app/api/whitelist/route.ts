@@ -64,22 +64,19 @@ export async function GET(req: NextRequest) {
     
     let output = "";
     for await (const chunk of stream) {
-      output += chunk.toString('utf8');
+      // Docker stream format: first 8 bytes are header, rest is data
+      const buffer = Buffer.from(chunk);
+      if (buffer.length > 8) {
+        output += buffer.subarray(8).toString('utf8');
+      }
     }
-
-    // Remove Docker stream headers (8 bytes prefix on each chunk)
-    const cleanOutput = output.replace(/^.{8}/gm, '').trim();
 
     let whitelist = [];
     try {
-      whitelist = JSON.parse(cleanOutput);
+      whitelist = JSON.parse(output.trim());
     } catch (e) {
-      // If parse fails, try the raw output
-      try {
-        whitelist = JSON.parse(output.trim());
-      } catch (e2) {
-        whitelist = [];
-      }
+      console.error("Error parsing whitelist.json:", e, "Output:", output);
+      whitelist = [];
     }
 
     return NextResponse.json({

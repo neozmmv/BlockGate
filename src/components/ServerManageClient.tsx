@@ -347,7 +347,7 @@ export default function ServerManageClient({
 
   const fetchLogsForRcon = async () => {
     try {
-      const { data } = await axios.get(`/api/logs?id=${serverId}&tail=50`);
+      const { data } = await axios.get(`/api/logs?id=${serverId}&tail=10`);
       if (data.ok && data.logs) {
         // Parse log lines and append new ones to RCON output
         const logLines = data.logs.split('\n').filter((line: string) => line.trim());
