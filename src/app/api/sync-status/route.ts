@@ -26,9 +26,9 @@ export async function POST(req: NextRequest) {
         } else if (inspect.State.Status === "exited") {
           newStatus = "STOPPED";
         } else if (inspect.State.Status === "restarting") {
-          newStatus = "RESTARTING";
+          newStatus = "RUNNING";
         } else if (inspect.State.Status === "paused") {
-          newStatus = "PAUSED";
+          newStatus = "STOPPED";
         }
 
         // Only update if status has changed

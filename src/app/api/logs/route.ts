@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
   }
 
   const serverId = req.nextUrl.searchParams.get("id");
-  const tail = req.nextUrl.searchParams.get("tail") || "100";
+  const tailParam = req.nextUrl.searchParams.get("tail") ?? "100";
+  const tail = Number.parseInt(tailParam, 10);
+  const safeTail = Number.isFinite(tail) && tail > 0 ? tail : 100;
 
   if (!serverId) {
     return NextResponse.json(
@@ -50,13 +52,19 @@ export async function GET(req: NextRequest) {
       stdout: true,
       stderr: true,
       follow: false,
-      tail: tail, // Docker API expects string
+      tail: safeTail,
       timestamps: true,
     });
 
     let logs = "";
     for await (const chunk of logStream) {
-      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      const buffer = Buffer.isBuffer(chunk)
+        ? chunk
+        : typeof chunk === "string"
+          ? Buffer.from(chunk, "utf8")
+          : typeof chunk === "number"
+            ? Buffer.from(String(chunk), "utf8")
+            : Buffer.from(chunk as any);
       // Skip Docker stream header (8 bytes) and get the actual data
       if (buffer.length > 8) {
         logs += buffer.subarray(8).toString('utf-8');

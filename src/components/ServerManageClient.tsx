@@ -394,7 +394,7 @@ export default function ServerManageClient({
           if (lastOutputLine !== lastLogLine) {
             setRconOutput(prev => {
               // Keep last 100 lines to prevent memory issues
-              const combined = [...prev, ...newLines.map(line => `[LOG] ${line}`)];
+              const combined = [...prev, ...newLines.map((line: string) => `[LOG] ${line}`)];
               return combined.slice(-100);
             });
           }

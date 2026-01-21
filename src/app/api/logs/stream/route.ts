@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { getDockerClient } from "@/lib/docker";
 import prisma from "@/lib/prisma";
+import type { Readable } from "node:stream";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,13 +70,13 @@ export async function GET(request: NextRequest) {
 
         try {
           // Attach to container logs with follow=true for streaming
-          const logStream = await container.logs({
+          const logStream = (await container.logs({
             follow: true,
             stdout: true,
             stderr: true,
             timestamps: true,
             tail: 100, // Start with last 100 lines
-          });
+          })) as unknown as Readable;
 
           // Handle log stream data
           logStream.on("data", (chunk: Buffer) => {
@@ -141,7 +142,7 @@ export async function GET(request: NextRequest) {
             if (!closed) {
               closed = true;
               clearInterval(heartbeatInterval);
-              logStream.destroy();
+              logStream.destroy?.();
               try {
                 controller.close();
               } catch (e) {
