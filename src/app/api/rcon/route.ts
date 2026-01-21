@@ -7,6 +7,24 @@ import { Rcon } from "rcon-client";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+async function connectRconWithFallback(options: { hosts: string[]; port: number; password: string }) {
+  let lastError: unknown;
+
+  for (const host of options.hosts) {
+    try {
+      return await Rcon.connect({
+        host,
+        port: options.port,
+        password: options.password,
+      });
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError;
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -50,25 +68,33 @@ export async function POST(req: NextRequest) {
     const rconPort = serverPort + 10;
 
     // Connect to RCON
-    const rcon = await Rcon.connect({
-      host: "localhost",
+    const rcon = await connectRconWithFallback({
+      hosts: [
+        // Docker Compose: reach the Minecraft container over the shared network
+        server.containerName,
+        // If the app is containerized but connecting via published ports
+        "host.docker.internal",
+        // Local dev
+        "127.0.0.1",
+        "localhost",
+      ],
       port: rconPort,
       password: rconPassword,
     });
 
-    // Send command
-    const response = await rcon.send(command);
-    
-    // Close connection
-    await rcon.end();
+    try {
+      const response = await rcon.send(String(command).trim());
 
-    return NextResponse.json({
-      ok: true,
-      response,
-    });
+      return NextResponse.json({
+        ok: true,
+        response,
+      });
+    } finally {
+      await rcon.end().catch(() => undefined);
+    }
   } catch (err: any) {
     return NextResponse.json(
-      { ok: false, error: err?.message ?? "Error executing RCON command" },
+      { ok: false, error: err?.message || String(err) || "Error executing RCON command" },
       { status: 500 }
     );
   }
