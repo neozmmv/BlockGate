@@ -1,0 +1,9 @@
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@tailwindcss/oxide'
+  - cpu-features
+  - prisma
+  - protobufjs
+  - sharp
+  - ssh2
