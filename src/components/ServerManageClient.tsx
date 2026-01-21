@@ -77,6 +77,8 @@ export default function ServerManageClient({
   const [rconCommand, setRconCommand] = useState("");
   const [rconOutput, setRconOutput] = useState<string[]>([]);
   const [sendingRcon, setSendingRcon] = useState(false);
+  const [rconLogsEnabled, setRconLogsEnabled] = useState(true);
+  const [lastLogTimestamp, setLastLogTimestamp] = useState<string | null>(null);
 
   // Logs state
   const [logs, setLogs] = useState("");
@@ -97,8 +99,16 @@ export default function ServerManageClient({
       fetchOps();
     } else if (activeTab === "logs") {
       fetchLogs();
+    } else if (activeTab === "rcon") {
+      // Start streaming logs when RCON tab is active
+      if (rconLogsEnabled) {
+        const interval = setInterval(() => {
+          fetchLogsForRcon();
+        }, 2000); // Poll every 2 seconds
+        return () => clearInterval(interval);
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, rconLogsEnabled]);
 
   const fetchServerInfo = async () => {
     setLoading(true);
@@ -332,6 +342,37 @@ export default function ServerManageClient({
       console.error("Error fetching logs:", error);
     } finally {
       setLoadingLogs(false);
+    }
+  };
+
+  const fetchLogsForRcon = async () => {
+    try {
+      const { data } = await axios.get(`/api/logs?id=${serverId}&tail=50`);
+      if (data.ok && data.logs) {
+        // Parse log lines and append new ones to RCON output
+        const logLines = data.logs.split('\n').filter((line: string) => line.trim());
+        
+        // Get the last few log lines that haven't been shown yet
+        const newLines = logLines.slice(-10); // Show last 10 lines
+        
+        // Only add if there are new lines and they're different from what we have
+        if (newLines.length > 0) {
+          const lastOutputLine = rconOutput[rconOutput.length - 1];
+          const lastLogLine = newLines[newLines.length - 1];
+          
+          // Only append if the last log line is different from our last output
+          if (lastOutputLine !== lastLogLine) {
+            setRconOutput(prev => {
+              // Keep last 100 lines to prevent memory issues
+              const combined = [...prev, ...newLines.map(line => `[LOG] ${line}`)];
+              return combined.slice(-100);
+            });
+          }
+        }
+      }
+    } catch (error) {
+      // Silently fail for background polling
+      console.error("Error fetching logs for RCON:", error);
     }
   };
 
@@ -749,20 +790,54 @@ export default function ServerManageClient({
         {/* RCON Tab */}
         {activeTab === "rcon" && (
           <div className="bg-[#0c1320] rounded-md p-6">
-            <h2 className="text-white text-lg mb-4">RCON Console</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white text-lg">RCON Console</h2>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="rcon-logs"
+                  checked={rconLogsEnabled}
+                  onChange={(e) => setRconLogsEnabled(e.target.checked)}
+                  className="w-4 h-4 accent-blue-500"
+                />
+                <label htmlFor="rcon-logs" className="text-zinc-400 text-sm">
+                  Stream logs in real-time
+                </label>
+              </div>
+            </div>
             <p className="text-zinc-400 text-sm mb-4">
               Send commands to the server via RCON. Common commands: list, say, stop, whitelist, op
             </p>
             
-            <div className="bg-[#0b1624] rounded p-4 mb-4 h-96 overflow-y-auto">
+            <div 
+              className="bg-[#0b1624] rounded p-4 mb-4 h-96 overflow-y-auto"
+              style={{ scrollBehavior: 'smooth' }}
+              ref={(el) => {
+                if (el && rconOutput.length > 0) {
+                  el.scrollTop = el.scrollHeight;
+                }
+              }}
+            >
               <div className="font-mono text-sm space-y-1">
                 {rconOutput.map((line, idx) => (
-                  <div key={idx} className={line.startsWith('>') ? 'text-blue-400' : 'text-zinc-300'}>
+                  <div 
+                    key={idx} 
+                    className={
+                      line.startsWith('>') 
+                        ? 'text-blue-400 font-bold' 
+                        : line.startsWith('[LOG]')
+                        ? 'text-zinc-500 text-xs'
+                        : 'text-zinc-300'
+                    }
+                  >
                     {line}
                   </div>
                 ))}
                 {rconOutput.length === 0 && (
-                  <div className="text-zinc-500">No commands sent yet. Type a command below.</div>
+                  <div className="text-zinc-500">
+                    No commands sent yet. Type a command below.
+                    {rconLogsEnabled && <div className="mt-2">Container logs will stream here in real-time...</div>}
+                  </div>
                 )}
               </div>
             </div>
@@ -773,7 +848,7 @@ export default function ServerManageClient({
                 value={rconCommand}
                 onChange={(e) => setRconCommand(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && sendRconCommand()}
-                placeholder="Enter command (e.g., list, say Hello)"
+                placeholder="Enter command (e.g., list, say Hello, whitelist add Steve)"
                 className="flex-1 p-2 bg-[#0b1624] text-white rounded outline-none font-mono"
                 disabled={sendingRcon}
               />
@@ -783,6 +858,13 @@ export default function ServerManageClient({
                 className="px-6 py-2 bg-blue-500 rounded-md hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendingRcon ? "Sending..." : "Send"}
+              </button>
+              <button
+                onClick={() => setRconOutput([])}
+                className="px-4 py-2 bg-zinc-700 rounded-md hover:bg-zinc-600 transition-all"
+                title="Clear console"
+              >
+                Clear
               </button>
             </div>
           </div>
