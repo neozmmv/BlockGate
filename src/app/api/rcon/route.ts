@@ -45,8 +45,8 @@ export async function POST(req: NextRequest) {
     const slug = server.containerName.replace(/^mc-/, '');
     const rconPassword = `rcon-${slug}`;
     
-    // Get server port from server IP (format: IP:PORT)
-    const serverPort = parseInt(server.ip.split(':')[1] || '25565');
+    // Get server port and calculate RCON port
+    const serverPort = server.port;
     const rconPort = serverPort + 10;
 
     // Connect to RCON

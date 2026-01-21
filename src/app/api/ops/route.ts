@@ -3,6 +3,7 @@ import { getDockerClient } from "@/lib/docker";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
+import { Rcon } from "rcon-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -133,6 +134,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Extract slug from container name for RCON password
+    const slug = server.containerName.replace(/^mc-/, '');
+    const rconPassword = `rcon-${slug}`;
+    const rconPort = server.port + 10;
+
     if (action === "add") {
       if (!name) {
         return NextResponse.json(
@@ -141,52 +147,23 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Read ops.json
-      const readExec = await container.exec({
-        Cmd: ["sh", "-c", "cat /data/ops.json 2>/dev/null || echo '[]'"],
-        AttachStdout: true,
-        AttachStderr: true,
-      });
-
-      const readStream = await readExec.start({ Detach: false });
-      let output = "";
-      for await (const chunk of readStream) {
-        output += chunk.toString('utf8');
-      }
-      // Remove Docker stream headers
-      const cleanOutput = output.replace(/^.{8}/gm, '').trim();
-      let ops = [];
+      // Use RCON to add player as OP
       try {
-        ops = JSON.parse(cleanOutput);
-      } catch (e) {
-        try {
-          ops = JSON.parse(output.trim());
-        } catch (e2) {
-          ops = [];
-        }
-      }
+        const rcon = await Rcon.connect({
+          host: "localhost",
+          port: rconPort,
+          password: rconPassword,
+        });
 
-      // Check if player already exists
-      const exists = ops.some((p: any) => p.name === name);
-      if (!exists) {
-        ops.push({ 
-          name, 
-          uuid: uuid || "", 
-          level: level || 4,
-          bypassesPlayerLimit: false
-        });
-        
-        // Use base64 encoding to avoid shell escaping issues
-        const base64Content = Buffer.from(JSON.stringify(ops, null, 2)).toString('base64');
-        const writeExec = await container.exec({
-          Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/ops.json`],
-          AttachStdout: true,
-          AttachStderr: true,
-        });
-        const writeStream = await writeExec.start({ Detach: false });
-        for await (const chunk of writeStream) {
-          // Consume stream
-        }
+        // Add player as OP using RCON command
+        // Level 4 is the default operator level (all permissions)
+        await rcon.send(`op ${name}`);
+        await rcon.end();
+      } catch (rconErr: any) {
+        return NextResponse.json(
+          { ok: false, error: `RCON error: ${rconErr.message}` },
+          { status: 500 }
+        );
       }
     } else if (action === "remove") {
       if (!name) {
@@ -196,43 +173,22 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Remove player from ops
-      const readExec = await container.exec({
-        Cmd: ["sh", "-c", "cat /data/ops.json 2>/dev/null || echo '[]'"],
-        AttachStdout: true,
-        AttachStderr: true,
-      });
-
-      const readStream = await readExec.start({ Detach: false });
-      let output = "";
-      for await (const chunk of readStream) {
-        output += chunk.toString('utf8');
-      }
-      // Remove Docker stream headers
-      const cleanOutput = output.replace(/^.{8}/gm, '').trim();
-      let ops = [];
+      // Use RCON to remove player from OPs
       try {
-        ops = JSON.parse(cleanOutput);
-      } catch (e) {
-        try {
-          ops = JSON.parse(output.trim());
-        } catch (e2) {
-          ops = [];
-        }
-      }
+        const rcon = await Rcon.connect({
+          host: "localhost",
+          port: rconPort,
+          password: rconPassword,
+        });
 
-      ops = ops.filter((p: any) => p.name !== name);
-      
-      // Use base64 encoding to avoid shell escaping issues
-      const base64Content = Buffer.from(JSON.stringify(ops, null, 2)).toString('base64');
-      const writeExec = await container.exec({
-        Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/ops.json`],
-        AttachStdout: true,
-        AttachStderr: true,
-      });
-      const writeStream = await writeExec.start({ Detach: false });
-      for await (const chunk of writeStream) {
-        // Consume stream
+        // Remove player from OPs using RCON command
+        await rcon.send(`deop ${name}`);
+        await rcon.end();
+      } catch (rconErr: any) {
+        return NextResponse.json(
+          { ok: false, error: `RCON error: ${rconErr.message}` },
+          { status: 500 }
+        );
       }
     }
 

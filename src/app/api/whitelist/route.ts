@@ -3,6 +3,7 @@ import { getDockerClient } from "@/lib/docker";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
+import { Rcon } from "rcon-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -137,6 +138,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Extract slug from container name for RCON password
+    const slug = server.containerName.replace(/^mc-/, '');
+    const rconPassword = `rcon-${slug}`;
+    const rconPort = server.port + 10;
+
     if (action === "add") {
       if (!name) {
         return NextResponse.json(
@@ -145,49 +151,22 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Read whitelist.json
-      const readExec = await container.exec({
-        Cmd: ["sh", "-c", "cat /data/whitelist.json 2>/dev/null || echo '[]'"],
-        AttachStdout: true,
-        AttachStderr: true,
-      });
-
-      const readStream = await readExec.start({ Detach: false });
-      let output = "";
-      for await (const chunk of readStream) {
-        output += chunk.toString('utf8');
-      }
-
-      // Remove Docker stream headers
-      const cleanOutput = output.replace(/^.{8}/gm, '').trim();
-
-      let whitelist = [];
+      // Use RCON to add player to whitelist
       try {
-        whitelist = JSON.parse(cleanOutput);
-      } catch (e) {
-        try {
-          whitelist = JSON.parse(output.trim());
-        } catch (e2) {
-          whitelist = [];
-        }
-      }
-
-      // Check if player already exists
-      const exists = whitelist.some((p: any) => p.name === name);
-      if (!exists) {
-        whitelist.push({ name, uuid: uuid || "" });
-        
-        // Use base64 encoding to avoid shell escaping issues
-        const base64Content = Buffer.from(JSON.stringify(whitelist, null, 2)).toString('base64');
-        const writeExec = await container.exec({
-          Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/whitelist.json`],
-          AttachStdout: true,
-          AttachStderr: true,
+        const rcon = await Rcon.connect({
+          host: "localhost",
+          port: rconPort,
+          password: rconPassword,
         });
-        const writeStream = await writeExec.start({ Detach: false });
-        for await (const chunk of writeStream) {
-          // Consume stream
-        }
+
+        // Add player using RCON command
+        await rcon.send(`whitelist add ${name}`);
+        await rcon.end();
+      } catch (rconErr: any) {
+        return NextResponse.json(
+          { ok: false, error: `RCON error: ${rconErr.message}` },
+          { status: 500 }
+        );
       }
     } else if (action === "remove") {
       if (!name) {
@@ -197,45 +176,22 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Remove player from whitelist
-      const readExec = await container.exec({
-        Cmd: ["sh", "-c", "cat /data/whitelist.json 2>/dev/null || echo '[]'"],
-        AttachStdout: true,
-        AttachStderr: true,
-      });
-
-      const readStream = await readExec.start({ Detach: false });
-      let output = "";
-      for await (const chunk of readStream) {
-        output += chunk.toString('utf8');
-      }
-
-      // Remove Docker stream headers
-      const cleanOutput = output.replace(/^.{8}/gm, '').trim();
-
-      let whitelist = [];
+      // Use RCON to remove player from whitelist
       try {
-        whitelist = JSON.parse(cleanOutput);
-      } catch (e) {
-        try {
-          whitelist = JSON.parse(output.trim());
-        } catch (e2) {
-          whitelist = [];
-        }
-      }
+        const rcon = await Rcon.connect({
+          host: "localhost",
+          port: rconPort,
+          password: rconPassword,
+        });
 
-      whitelist = whitelist.filter((p: any) => p.name !== name);
-      
-      // Use base64 encoding to avoid shell escaping issues
-      const base64Content = Buffer.from(JSON.stringify(whitelist, null, 2)).toString('base64');
-      const writeExec = await container.exec({
-        Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/whitelist.json`],
-        AttachStdout: true,
-        AttachStderr: true,
-      });
-      const writeStream = await writeExec.start({ Detach: false });
-      for await (const chunk of writeStream) {
-        // Consume stream
+        // Remove player using RCON command
+        await rcon.send(`whitelist remove ${name}`);
+        await rcon.end();
+      } catch (rconErr: any) {
+        return NextResponse.json(
+          { ok: false, error: `RCON error: ${rconErr.message}` },
+          { status: 500 }
+        );
       }
     }
 
