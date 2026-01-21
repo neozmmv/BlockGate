@@ -44,18 +44,6 @@ export default function OnlineTable() {
 
   useEffect(() => {
     fetchServers();
-    
-    // Set up interval to sync status every 10 seconds
-    const syncInterval = setInterval(async () => {
-      try {
-        await axios.post('/api/sync-status');
-        await fetchServers();
-      } catch (error) {
-        console.error("Error syncing status:", error);
-      }
-    }, 10000);
-
-    return () => clearInterval(syncInterval);
   }, [fetchServers]);
 
   async function handleDeleteServer(serverId: string) {

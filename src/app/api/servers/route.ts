@@ -107,24 +107,31 @@ if(!session) {
       envObj.CF_PAGE_URL = body.CF_PAGE_URL;
     }
 
-    const Env = Object.entries(envObj).map(([k, v]) => `${k}=${v}`);
-
     // Define name and volume based on server name
     const slug = toSlug(body.metadata.serverName);
     const containerName = `mc-${slug}`;
     const volumeName = `mc-data-${slug}`;
     const hostPort = body.network?.serverPort ?? 25565;
 
+    // Add RCON configuration to environment
+    envObj.ENABLE_RCON = "TRUE";
+    envObj.RCON_PORT = String(hostPort + 10);
+    envObj.RCON_PASSWORD = `rcon-${slug}`; // Simple password for now
+    
+    const Env = Object.entries(envObj).map(([k, v]) => `${k}=${v}`);
+
     // Guarantee image + volume
     await ensureImage(IMAGE);
     await docker.createVolume({ Name: volumeName }).catch(() => { /* se existir, reutiliza */ });
 
-    // Port mapping
-    // REMEMBER TO HANDLE THIS PORT SETUP CORRECTLY
-    // might send via request, check if port is used on host, etc... idk
-    const ExposedPorts: Record<string, {}> = { "25565/tcp": {} };
+    // Port mapping - Use the same port for both container and host
+    const ExposedPorts: Record<string, {}> = { 
+      [`${hostPort}/tcp`]: {},
+      [`${hostPort + 10}/tcp`]: {} // RCON port
+    };
     const PortBindings: Record<string, Array<{ HostPort: string }>> = {
-      "25565/tcp": [{ HostPort: String(hostPort) }],
+      [`${hostPort}/tcp`]: [{ HostPort: String(hostPort) }],
+      [`${hostPort + 10}/tcp`]: [{ HostPort: String(hostPort + 10) }], // RCON port
     };
 
     // Container creation

@@ -475,7 +475,7 @@ export default function ServerManageClient({
               <div className="text-zinc-400">Loading...</div>
             ) : (
               <div className="space-y-2">
-                {currentPath !== "/data" && (
+                {currentPath !== "/data" && currentPath !== "/data/" && (
                   <div
                     onClick={() => {
                       const parentPath = currentPath.split("/").slice(0, -1).join("/") || "/data";
@@ -682,12 +682,12 @@ export default function ServerManageClient({
 
       {/* File Editor Modal */}
       {fileEditorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/50"
             onClick={() => setFileEditorOpen(false)}
           />
-          <div className="relative z-10 w-full max-w-4xl max-h-[80vh] rounded-xl bg-[#0c1320] p-6 shadow-xl flex flex-col">
+          <div className="relative z-10 w-full max-w-6xl h-[85vh] rounded-xl bg-[#0c1320] p-6 shadow-xl flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-white text-lg">Editing: {editingFilePath.split('/').pop()}</h3>
               <button
@@ -701,7 +701,8 @@ export default function ServerManageClient({
             <textarea
               value={editingFileContent}
               onChange={(e) => setEditingFileContent(e.target.value)}
-              className="flex-1 w-full p-4 bg-[#0b1624] text-white font-mono text-sm rounded outline-none resize-none"
+              className="flex-1 w-full p-4 bg-[#0b1624] text-white text-sm rounded outline-none resize-none"
+              style={{ fontFamily: 'ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace' }}
               spellCheck={false}
             />
             <div className="flex gap-2 justify-end mt-4">

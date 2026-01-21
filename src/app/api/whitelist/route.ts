@@ -62,17 +62,23 @@ export async function GET(req: NextRequest) {
     const stream = await exec.start({ Detach: false });
     
     let output = "";
-    stream.on("data", (chunk: Buffer) => {
-      output += chunk.toString();
-    });
-    
-    await new Promise((resolve) => stream.on("end", resolve));
+    for await (const chunk of stream) {
+      output += chunk.toString('utf8');
+    }
+
+    // Remove Docker stream headers (8 bytes prefix on each chunk)
+    const cleanOutput = output.replace(/^.{8}/gm, '').trim();
 
     let whitelist = [];
     try {
-      whitelist = JSON.parse(output.trim());
+      whitelist = JSON.parse(cleanOutput);
     } catch (e) {
-      whitelist = [];
+      // If parse fails, try the raw output
+      try {
+        whitelist = JSON.parse(output.trim());
+      } catch (e2) {
+        whitelist = [];
+      }
     }
 
     return NextResponse.json({
@@ -139,7 +145,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Read ops.json
+      // Read whitelist.json
       const readExec = await container.exec({
         Cmd: ["sh", "-c", "cat /data/whitelist.json 2>/dev/null || echo '[]'"],
         AttachStdout: true,
@@ -148,16 +154,22 @@ export async function POST(req: NextRequest) {
 
       const readStream = await readExec.start({ Detach: false });
       let output = "";
-      readStream.on("data", (chunk: Buffer) => {
-        output += chunk.toString();
-      });
-      await new Promise((resolve) => readStream.on("end", resolve));
+      for await (const chunk of readStream) {
+        output += chunk.toString('utf8');
+      }
+
+      // Remove Docker stream headers
+      const cleanOutput = output.replace(/^.{8}/gm, '').trim();
 
       let whitelist = [];
       try {
-        whitelist = JSON.parse(output.trim());
+        whitelist = JSON.parse(cleanOutput);
       } catch (e) {
-        whitelist = [];
+        try {
+          whitelist = JSON.parse(output.trim());
+        } catch (e2) {
+          whitelist = [];
+        }
       }
 
       // Check if player already exists
@@ -166,13 +178,16 @@ export async function POST(req: NextRequest) {
         whitelist.push({ name, uuid: uuid || "" });
         
         // Use base64 encoding to avoid shell escaping issues
-        const base64Content = Buffer.from(JSON.stringify(whitelist)).toString('base64');
+        const base64Content = Buffer.from(JSON.stringify(whitelist, null, 2)).toString('base64');
         const writeExec = await container.exec({
           Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/whitelist.json`],
           AttachStdout: true,
           AttachStderr: true,
         });
-        await writeExec.start({ Detach: false });
+        const writeStream = await writeExec.start({ Detach: false });
+        for await (const chunk of writeStream) {
+          // Consume stream
+        }
       }
     } else if (action === "remove") {
       if (!name) {
@@ -191,28 +206,37 @@ export async function POST(req: NextRequest) {
 
       const readStream = await readExec.start({ Detach: false });
       let output = "";
-      readStream.on("data", (chunk: Buffer) => {
-        output += chunk.toString();
-      });
-      await new Promise((resolve) => readStream.on("end", resolve));
+      for await (const chunk of readStream) {
+        output += chunk.toString('utf8');
+      }
+
+      // Remove Docker stream headers
+      const cleanOutput = output.replace(/^.{8}/gm, '').trim();
 
       let whitelist = [];
       try {
-        whitelist = JSON.parse(output.trim());
+        whitelist = JSON.parse(cleanOutput);
       } catch (e) {
-        whitelist = [];
+        try {
+          whitelist = JSON.parse(output.trim());
+        } catch (e2) {
+          whitelist = [];
+        }
       }
 
       whitelist = whitelist.filter((p: any) => p.name !== name);
       
       // Use base64 encoding to avoid shell escaping issues
-      const base64Content = Buffer.from(JSON.stringify(whitelist)).toString('base64');
+      const base64Content = Buffer.from(JSON.stringify(whitelist, null, 2)).toString('base64');
       const writeExec = await container.exec({
         Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/whitelist.json`],
         AttachStdout: true,
         AttachStderr: true,
       });
-      await writeExec.start({ Detach: false });
+      const writeStream = await writeExec.start({ Detach: false });
+      for await (const chunk of writeStream) {
+        // Consume stream
+      }
     }
 
     return NextResponse.json({

@@ -60,19 +60,21 @@ export async function GET(req: NextRequest) {
     });
 
     const stream = await exec.start({ Detach: false });
-    
     let output = "";
-    stream.on("data", (chunk: Buffer) => {
-      output += chunk.toString();
-    });
-    
-    await new Promise((resolve) => stream.on("end", resolve));
-
+    for await (const chunk of stream) {
+      output += chunk.toString('utf8');
+    }
+    // Remove Docker stream headers
+    const cleanOutput = output.replace(/^.{8}/gm, '').trim();
     let ops = [];
     try {
-      ops = JSON.parse(output.trim());
+      ops = JSON.parse(cleanOutput);
     } catch (e) {
-      ops = [];
+      try {
+        ops = JSON.parse(output.trim());
+      } catch (e2) {
+        ops = [];
+      }
     }
 
     return NextResponse.json({
@@ -148,16 +150,20 @@ export async function POST(req: NextRequest) {
 
       const readStream = await readExec.start({ Detach: false });
       let output = "";
-      readStream.on("data", (chunk: Buffer) => {
-        output += chunk.toString();
-      });
-      await new Promise((resolve) => readStream.on("end", resolve));
-
+      for await (const chunk of readStream) {
+        output += chunk.toString('utf8');
+      }
+      // Remove Docker stream headers
+      const cleanOutput = output.replace(/^.{8}/gm, '').trim();
       let ops = [];
       try {
-        ops = JSON.parse(output.trim());
+        ops = JSON.parse(cleanOutput);
       } catch (e) {
-        ops = [];
+        try {
+          ops = JSON.parse(output.trim());
+        } catch (e2) {
+          ops = [];
+        }
       }
 
       // Check if player already exists
@@ -171,13 +177,16 @@ export async function POST(req: NextRequest) {
         });
         
         // Use base64 encoding to avoid shell escaping issues
-        const base64Content = Buffer.from(JSON.stringify(ops)).toString('base64');
+        const base64Content = Buffer.from(JSON.stringify(ops, null, 2)).toString('base64');
         const writeExec = await container.exec({
           Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/ops.json`],
           AttachStdout: true,
           AttachStderr: true,
         });
-        await writeExec.start({ Detach: false });
+        const writeStream = await writeExec.start({ Detach: false });
+        for await (const chunk of writeStream) {
+          // Consume stream
+        }
       }
     } else if (action === "remove") {
       if (!name) {
@@ -196,28 +205,35 @@ export async function POST(req: NextRequest) {
 
       const readStream = await readExec.start({ Detach: false });
       let output = "";
-      readStream.on("data", (chunk: Buffer) => {
-        output += chunk.toString();
-      });
-      await new Promise((resolve) => readStream.on("end", resolve));
-
+      for await (const chunk of readStream) {
+        output += chunk.toString('utf8');
+      }
+      // Remove Docker stream headers
+      const cleanOutput = output.replace(/^.{8}/gm, '').trim();
       let ops = [];
       try {
-        ops = JSON.parse(output.trim());
+        ops = JSON.parse(cleanOutput);
       } catch (e) {
-        ops = [];
+        try {
+          ops = JSON.parse(output.trim());
+        } catch (e2) {
+          ops = [];
+        }
       }
 
       ops = ops.filter((p: any) => p.name !== name);
       
       // Use base64 encoding to avoid shell escaping issues
-      const base64Content = Buffer.from(JSON.stringify(ops)).toString('base64');
+      const base64Content = Buffer.from(JSON.stringify(ops, null, 2)).toString('base64');
       const writeExec = await container.exec({
         Cmd: ["sh", "-c", `echo '${base64Content}' | base64 -d > /data/ops.json`],
         AttachStdout: true,
         AttachStderr: true,
       });
-      await writeExec.start({ Detach: false });
+      const writeStream = await writeExec.start({ Detach: false });
+      for await (const chunk of writeStream) {
+        // Consume stream
+      }
     }
 
     return NextResponse.json({
