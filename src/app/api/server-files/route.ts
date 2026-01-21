@@ -32,6 +32,14 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // Security: Ensure path is within /data directory
+  if (!path.startsWith("/data")) {
+    return NextResponse.json(
+      { ok: false, error: "Access denied: Path must be within /data directory" },
+      { status: 403 }
+    );
+  }
+
   try {
     const server = await prisma.server.findFirst({
       where: { id: serverId, ownerId: session.user.id },

@@ -64,6 +64,9 @@ export default function AddServerButton({ session }: { session?: any }) {
     const res = await axios.post("/api/servers", payload);
     console.log(res.data);
     setIsModalOpen(false);
+    
+    // Trigger a page refresh to show the new server
+    window.location.reload();
   };
 
   return (

@@ -67,6 +67,12 @@ export default function ServerManageClient({
   const [newOpPlayer, setNewOpPlayer] = useState("");
   const [newOpLevel, setNewOpLevel] = useState(4);
 
+  // File editor state
+  const [fileEditorOpen, setFileEditorOpen] = useState(false);
+  const [editingFilePath, setEditingFilePath] = useState("");
+  const [editingFileContent, setEditingFileContent] = useState("");
+  const [savingFile, setSavingFile] = useState(false);
+
   useEffect(() => {
     fetchServerInfo();
   }, [serverId]);
@@ -245,6 +251,40 @@ export default function ServerManageClient({
     } catch (error) {
       console.error("Error removing from ops:", error);
       alert("Failed to remove player from ops");
+    }
+  };
+
+  const openFileEditor = async (filePath: string) => {
+    try {
+      const { data } = await axios.get(`/api/file-content?id=${serverId}&path=${encodeURIComponent(filePath)}`);
+      if (data.ok) {
+        setEditingFilePath(filePath);
+        setEditingFileContent(data.content);
+        setFileEditorOpen(true);
+      }
+    } catch (error) {
+      console.error("Error loading file:", error);
+      alert("Failed to load file");
+    }
+  };
+
+  const saveFile = async () => {
+    setSavingFile(true);
+    try {
+      const { data } = await axios.post(`/api/file-content`, {
+        serverId,
+        filePath: editingFilePath,
+        content: editingFileContent,
+      });
+      if (data.ok) {
+        alert("File saved successfully!");
+        setFileEditorOpen(false);
+      }
+    } catch (error) {
+      console.error("Error saving file:", error);
+      alert("Failed to save file");
+    } finally {
+      setSavingFile(false);
     }
   };
 
@@ -447,27 +487,40 @@ export default function ServerManageClient({
                     <span className="text-white">..</span>
                   </div>
                 )}
-                {files.map((file, idx) => (
+                {files.map((file, idx) => {
+                  const isEditable = !file.isDirectory && (file.name.endsWith('.json') || file.name.endsWith('.txt'));
+                  return (
                   <div
                     key={idx}
                     onClick={() => {
                       if (file.isDirectory) {
                         const newPath = `${currentPath}/${file.name}`.replace("//", "/");
                         fetchFiles(newPath);
+                      } else if (isEditable) {
+                        const filePath = `${currentPath}/${file.name}`.replace("//", "/");
+                        openFileEditor(filePath);
                       }
                     }}
-                    className="flex items-center justify-between p-2 hover:bg-[#0b1624] rounded cursor-pointer"
+                    className={`flex items-center justify-between p-2 hover:bg-[#0b1624] rounded ${
+                      file.isDirectory || isEditable ? 'cursor-pointer' : 'cursor-default'
+                    }`}
                   >
                     <div className="flex items-center gap-2">
                       <span>{file.isDirectory ? "📁" : "📄"}</span>
-                      <span className="text-white">{file.name}</span>
+                      <span className={`${isEditable ? 'text-blue-400' : 'text-white'}`}>
+                        {file.name}
+                      </span>
+                      {isEditable && (
+                        <span className="text-xs text-zinc-500">(editable)</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-zinc-400 text-sm">{file.size}</span>
                       <span className="text-zinc-400 text-sm font-mono">{file.permissions}</span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 {files.length === 0 && (
                   <div className="text-zinc-400">No files found</div>
                 )}
@@ -626,6 +679,49 @@ export default function ServerManageClient({
           </div>
         )}
       </div>
+
+      {/* File Editor Modal */}
+      {fileEditorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setFileEditorOpen(false)}
+          />
+          <div className="relative z-10 w-full max-w-4xl max-h-[80vh] rounded-xl bg-[#0c1320] p-6 shadow-xl flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white text-lg">Editing: {editingFilePath.split('/').pop()}</h3>
+              <button
+                onClick={() => setFileEditorOpen(false)}
+                className="text-zinc-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-zinc-400 text-xs mb-2">Path: {editingFilePath}</p>
+            <textarea
+              value={editingFileContent}
+              onChange={(e) => setEditingFileContent(e.target.value)}
+              className="flex-1 w-full p-4 bg-[#0b1624] text-white font-mono text-sm rounded outline-none resize-none"
+              spellCheck={false}
+            />
+            <div className="flex gap-2 justify-end mt-4">
+              <button
+                onClick={() => setFileEditorOpen(false)}
+                className="px-4 py-2 bg-zinc-700 rounded-md hover:bg-zinc-600 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveFile}
+                disabled={savingFile}
+                className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingFile ? "Saving..." : "Save File"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
